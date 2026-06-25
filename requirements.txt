@@ -1,0 +1,8 @@
+httpx
+beautifulsoup4
+python-dotenv
+schedule
+openpyxl
+anthropic
+reportlab
+flask
