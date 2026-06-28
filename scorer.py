@@ -57,9 +57,11 @@ _STAFFING_NAME_KW = (
 
 # Description-level signals (catches agencies with innocent-looking company names)
 _STAFFING_DESC_SIGNALS = (
-    "our client is looking", "on behalf of our client",
+    "our client is looking", "our client is seeking", "our client has",
+    "our client, a", "on behalf of our client", "on behalf of our end client",
     "corp to corp", "c2c only", "w2 or c2c", "c2c or w2",
-    "corp-to-corp", "bill rate",
+    "corp-to-corp", "bill rate", "w2 only", "contract to hire",
+    "staffing firm", "staffing agency", "recruiting firm", "search firm",
 )
 
 # ---------------------------------------------------------------------------
@@ -125,6 +127,9 @@ _SPONS_NO_RE = re.compile(
     # "only US/USA citizens" — "only" appears BEFORE the citizenship term
     r'|only\s+(?:usa?|u\.?\s*s\.?)\s+citizens?'
     r'|open\s+(?:only\s+)?to\s+(?:usa?|u\.?\s*s\.?)\s+citizens?'
+    # "not eligible for visa sponsorship" / "not eligible for sponsorship"
+    r'|not\s+eligible\s+for\s+(?:visa\s+|h-?1b\s+|immigration\s+)?sponsorship'
+    r'|(?:role|position|job)\s+is\s+not\s+eligible\s+for\s+(?:visa\s+)?sponsorship'
     r')',
     re.IGNORECASE,
 )
@@ -372,8 +377,7 @@ def score_job(job: dict) -> dict:
         return _SKIP("Skipped — staffing/recruiting agency name")
 
     # ── Description-level agency signals ────────────────────────────────────
-    desc_peek = description[:600]
-    if any(s in desc_peek for s in _STAFFING_DESC_SIGNALS):
+    if any(s in description for s in _STAFFING_DESC_SIGNALS):
         return _SKIP("Skipped — staffing agency JD signals (c2c/our client)")
 
     # ── Clearance gate ───────────────────────────────────────────────────────
