@@ -87,6 +87,11 @@ GREENHOUSE_COMPANIES = [
     "hologic", "iqvia", "labcorp", "questdiagnostics",
     "nerdwallet", "chime", "betterment", "robinhoodmarkets", "coinbase",
     "deloitte", "accenture",
+    # Tech / product companies
+    "lyft", "doordash", "reddit", "discord", "asana", "intercom", "notion",
+    "hubspot", "zendesk", "1password", "checkr", "figma",
+    # Data / ML / AI platforms
+    "scale", "dbtlabs", "prefecthq",
 ]
 
 
@@ -132,6 +137,8 @@ LEVER_COMPANIES = [
     "anduril", "nerdwallet", "samsara", "lattice", "faire", "affirm",
     "duolingo", "amplitude", "elastic", "benchling", "recursion",
     "ziprecruiter", "experian", "fico", "leidos", "maximus",
+    # New additions
+    "wandb", "coreweave", "linear", "vanta", "replit", "vercel",
 ]
 
 
@@ -170,6 +177,8 @@ ASHBY_COMPANIES = [
     "OpenAI", "Anthropic", "Cohere", "Scale-AI", "Databricks",
     "HuggingFace", "Mistral", "TogetherAI", "Modal", "Perplexity",
     "Character", "Airbyte", "Hightouch", "Nerdwallet", "Compound",
+    # New additions — AI/ML tooling and infra
+    "Runway", "ElevenLabs", "Writer", "Qdrant", "LangChain", "Vectara",
 ]
 
 
@@ -759,5 +768,92 @@ def fetch_gmail_jobs() -> list[dict]:
         _log_error("fetch_gmail_jobs", f"Auth failed: {e}")
     except Exception as e:
         _log_error("fetch_gmail_jobs", str(e))
+
+    return results
+
+
+# ---------------------------------------------------------------------------
+# 8. Built In (builtin.com — tech company job board, direct employer postings)
+# Only lists jobs from tech companies directly — no staffing agencies.
+# ---------------------------------------------------------------------------
+_BUILTIN_SEARCHES = [
+    "data scientist", "machine learning engineer", "data analyst",
+    "ai engineer", "data engineer", "nlp engineer", "applied scientist",
+]
+
+
+def fetch_builtin_jobs() -> list[dict]:
+    from urllib.parse import quote_plus
+    results:   list[dict] = []
+    seen_urls: set[str]   = set()
+
+    for query in _BUILTIN_SEARCHES:
+        url = (
+            "https://api.builtin.com/jobs"
+            f"?search={quote_plus(query)}&location=united-states&num_jobs=25"
+        )
+        resp = _get(url, timeout=15)
+        if resp is None:
+            continue
+        try:
+            payload = resp.json()
+            # API may return a list or a dict with a "jobs"/"data" key
+            jobs = payload if isinstance(payload, list) else (
+                payload.get("jobs") or payload.get("data") or []
+            )
+            for job in jobs:
+                if not isinstance(job, dict):
+                    continue
+                job_url = (
+                    job.get("url") or job.get("absolute_url")
+                    or job.get("applyUrl") or ""
+                )
+                if not job_url or job_url in seen_urls:
+                    continue
+                seen_urls.add(job_url)
+
+                company = (
+                    job.get("company") or job.get("company_name")
+                    or job.get("companyName") or ""
+                )
+                if isinstance(company, dict):
+                    company = company.get("name") or ""
+
+                loc = (
+                    job.get("location") or job.get("city")
+                    or job.get("locationName") or ""
+                )
+                if isinstance(loc, dict):
+                    loc = loc.get("name") or loc.get("city") or ""
+
+                posted_raw = (
+                    job.get("date") or job.get("posted_at")
+                    or job.get("datePosted") or job.get("publishedAt")
+                )
+                posted_at = None
+                if posted_raw:
+                    try:
+                        dt = datetime.fromisoformat(str(posted_raw).replace("Z", "+00:00"))
+                        posted_at = dt.strftime("%Y-%m-%d %H:%M UTC")
+                    except Exception:
+                        posted_at = str(posted_raw)[:10] or None
+
+                desc = (
+                    job.get("description") or job.get("responsibilities")
+                    or job.get("jobDescription") or ""
+                )
+
+                results.append({
+                    "job_id":      f"btin_{_hash(job_url)}",
+                    "title":       job.get("title") or job.get("name") or "",
+                    "company":     company,
+                    "url":         job_url,
+                    "location":    loc,
+                    "description": desc,
+                    "source":      "BuiltIn",
+                    "posted_at":   posted_at,
+                })
+        except Exception as e:
+            _log_error("fetch_builtin_jobs", f"{query}: {e}")
 
     return results

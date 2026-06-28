@@ -22,7 +22,7 @@ from database import (
 from fetchers import (
     fetch_greenhouse_jobs, fetch_lever_jobs, fetch_ashby_jobs,
     fetch_rss_jobs, fetch_gmail_jobs,
-    fetch_linkedin_jobs, fetch_workday_jobs,
+    fetch_linkedin_jobs, fetch_workday_jobs, fetch_builtin_jobs,
 )
 from scorer import score_job, is_usa_job, load_blocked_companies
 from resume_scorer import best_resume_for_job
@@ -98,6 +98,7 @@ def main():
             ("Gmail",       fetch_gmail_jobs),
             ("LinkedIn",    lambda: fetch_linkedin_jobs(quick=False)),
             ("Workday",     fetch_workday_jobs),
+            ("BuiltIn",     fetch_builtin_jobs),
         ]
 
     for name, fetcher in fetchers:
